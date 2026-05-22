@@ -1,5 +1,6 @@
 name: Release APK
 
+# 推送 v* 格式的 tag 時觸發（例如 v1.0.0）
 on:
   push:
     tags:
@@ -15,6 +16,8 @@ jobs:
     steps:
       - name: 簽出程式碼
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 取得完整歷史，用於產生 changelog
 
       - name: 設定 Java 17
         uses: actions/setup-java@v4
@@ -37,35 +40,49 @@ jobs:
       - name: 賦予 Gradlew 執行權限
         run: chmod +x ./gradlew
 
+      # === 簽名設定 ===
+      - name: 解碼 Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.keystore
+
+      # === 建置 Release APK（含簽名）===
       - name: 建置 Release APK
+        env:
+          KEYSTORE_FILE: ${{ github.workspace }}/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew assembleRelease
 
-      - name: 簽署 APK (Debug 簽名)
+      - name: 重新命名 APK
         run: |
-          # 使用 debug keystore 進行簽署（如需正式簽名請設定 secrets）
-          BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -1)
-          ${BUILD_TOOLS}zipalign -v 4 \
-            app/build/outputs/apk/release/app-release-unsigned.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk || true
-          ${BUILD_TOOLS}apksigner sign \
-            --ks ~/.android/debug.keystore \
-            --ks-pass pass:android \
-            --key-pass pass:android \
-            --out app/build/outputs/apk/release/SubtitleOverlay-${{ github.ref_name }}.apk \
-            app/build/outputs/apk/release/app-release-aligned.apk || \
-          cp app/build/outputs/apk/release/app-release-unsigned.apk \
-            app/build/outputs/apk/release/SubtitleOverlay-${{ github.ref_name }}.apk
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -1)
+          if [ -z "$APK_PATH" ]; then
+            APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          fi
+          cp "$APK_PATH" app/build/outputs/apk/release/SubtitleOverlay-${{ github.ref_name }}.apk
 
-      - name: 同時建置 Debug APK
+      # === 建置 Debug APK ===
+      - name: 建置 Debug APK
         run: ./gradlew assembleDebug
 
+      # === 清理 Keystore ===
+      - name: 清理 Keystore
+        if: always()
+        run: rm -f ${{ github.workspace }}/release.keystore
+
+      # === 產生 Changelog ===
       - name: 取得變更紀錄
         id: changelog
         run: |
-          echo "## 變更內容" > changelog.md
-          echo "" >> changelog.md
-          git log $(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:"- %s" >> changelog.md 2>/dev/null || echo "- 初始版本" >> changelog.md
+          {
+            echo "## 變更內容"
+            echo ""
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s" 2>/dev/null || echo "- 初始版本"
+          } > changelog.md
 
+      # === 發布 Release ===
       - name: 建立 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -75,3 +92,29 @@ jobs:
             app/build/outputs/apk/debug/app-debug.apk
           draft: false
           prerelease: false
+
+# ============================================================
+# 設定說明：需在 GitHub Repo → Settings → Secrets 加入以下 4 個 Secret
+#
+# 1. KEYSTORE_BASE64
+#    產生方式：base64 -w 0 your-release.keystore
+#    將輸出的整段文字貼入 Secret
+#
+# 2. KEYSTORE_PASSWORD
+#    建立 keystore 時設定的密碼
+#
+# 3. KEY_ALIAS
+#    金鑰別名（例如：subtitle-overlay）
+#
+# 4. KEY_PASSWORD
+#    金鑰密碼
+#
+# 如果還沒有 keystore，可用以下指令產生：
+#   keytool -genkeypair -v \
+#     -keystore release.keystore \
+#     -alias subtitle-overlay \
+#     -keyalg RSA -keysize 2048 \
+#     -validity 10000 \
+#     -storepass YOUR_PASSWORD \
+#     -keypass YOUR_PASSWORD
+# ============================================================
