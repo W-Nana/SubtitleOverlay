@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允許 HTTP 明文連線（本地網路伺服器） -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

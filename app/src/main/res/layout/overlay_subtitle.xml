@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 浮窗字幕佈局 — 固定大小，支援邊緣拖曳調整 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/overlay_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- 半透明邊框（調整大小時高亮顯示） -->
+    <View
+        android:id="@+id/resize_border"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone" />
+
+    <!-- 字幕內容區域（可捲動，字幕靠底部） -->
+    <ScrollView
+        android:id="@+id/subtitle_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scrollbars="none"
+        android:fillViewport="true"
+        android:isScrollContainer="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="bottom"
+            android:padding="8dp">
+
+            <!-- 等待字幕提示（初始時顯示，靠底部） -->
+            <TextView
+                android:id="@+id/text_waiting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⏳ 等待字幕中…\n（拖曳邊緣可調整大小）"
+                android:textColor="#AAFFFFFF"
+                android:textSize="13sp"
+                android:padding="8dp"
+                android:visibility="visible" />
+
+            <!-- 字幕項目容器 -->
+            <LinearLayout
+                android:id="@+id/subtitle_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 右下角調整大小手把（視覺提示） -->
+    <View
+        android:id="@+id/resize_handle"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:layout_gravity="bottom|end"
+        android:alpha="0.5" />
+
+    <!-- 觸控攔截層 — 位於最上層，攔截所有觸控事件用於拖曳和調整大小 -->
+    <View
+        android:id="@+id/touch_catcher"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</FrameLayout>

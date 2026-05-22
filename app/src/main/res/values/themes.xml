@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.SubtitleOverlay" parent="Theme.Material3.Dark.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorOnBackground">@color/on_background</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <!-- 全域 Dialog 使用暗色主題 -->
+        <item name="materialAlertDialogTheme">@style/DarkAlertDialog</item>
+    </style>
+
+    <!-- 暗色 AlertDialog 主題 -->
+    <style name="DarkAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="colorSurface">#1E1E2E</item>
+        <item name="colorOnSurface">#E0E0E0</item>
+        <item name="colorOnSurfaceVariant">#B0B0B0</item>
+        <item name="colorPrimary">@color/primary</item>
+        <!-- 消除白邊：覆蓋對話框背景 -->
+        <item name="alertDialogStyle">@style/DarkAlertDialogStyle</item>
+    </style>
+
+    <style name="DarkAlertDialogStyle" parent="MaterialAlertDialog.Material3">
+        <item name="android:background">#1E1E2E</item>
+    </style>
+</resources>
