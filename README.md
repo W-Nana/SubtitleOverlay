@@ -41,24 +41,22 @@ Android 即時翻譯字幕浮窗應用程式，透過 SSE (Server-Sent Events) �
 
 應用程式透過以下流程與翻譯伺服器對接：
 
-1. `GET /api/server/info` → 取得公開端口與分享狀態
-2. `GET /api/translation/active-task` → 取得當前翻譯任務 ID
-3. `GET /api/translation/stream/{task_id}` → SSE 即時字幕串流
+1. `GET /api/translation/active-task` → 取得當前翻譯任務 ID
+2. `GET /api/translation/stream/{task_id}` → SSE 即時字幕串流
 
-### 設定項目
+只需輸入伺服器完整位址即可連線，支援 `http` 和 `https` 協定：
 
-| 項目 | 說明 | 預設值 |
-|------|------|--------|
-| 伺服器 IP / 域名 | 翻譯伺服器位址 | `192.168.1.100` |
-| 主伺服器端口 | stream-translator-gpt 主服務端口 | `5000` |
-| 公開端口 | 字幕分享端口 | `8765` |
+```
+http://192.168.1.100:8765
+https://my-server.example.com:8765
+```
 
 ## 使用方式
 
 1. 從 [Releases](https://github.com/W-Nana/SubtitleOverlay/releases) 下載 APK
 2. 安裝到 Android 裝置
 3. 授予「顯示在其他應用程式上層」(懸浮窗) 權限
-4. 輸入翻譯伺服器的 IP 和端口
+4. 輸入翻譯伺服器位址（如 `http://192.168.1.100:8765`）
 5. 調整字幕外觀設定
 6. 點擊「啟動浮窗字幕」
 7. 切換到其他 App，字幕會以浮窗形式覆蓋顯示
