@@ -11,15 +11,15 @@ import java.util.concurrent.TimeUnit
  * SSE 客戶端 — 負責與翻譯伺服器建立 Server-Sent Events 連線並解析事件
  *
  * 連線流程：
- * 1. GET /api/server/info → 取得公開端口（可選）
- * 2. GET /api/translation/active-task → 取得當前任務 ID
- * 3. GET /api/translation/stream/{task_id} → 開始 SSE 串流
+ * 1. GET /api/translation/active-task → 取得當前任務 ID
+ * 2. GET /api/translation/stream/{task_id} → 開始 SSE 串流
  */
 class SseClient(
-    private val serverHost: String,
-    private val mainPort: Int,
-    private val publicPort: Int
+    baseUrl: String
 ) {
+
+    /** 去除尾部斜線的 base URL */
+    private val baseUrl = baseUrl.trimEnd('/')
 
     /** SSE 事件監聽介面 */
     interface EventListener {
@@ -58,11 +58,8 @@ class SseClient(
                 try {
                     listener?.onConnectionStateChanged(ConnectionState.CONNECTING)
 
-                    // 步驟一：嘗試從主伺服器取得公開端口
-                    val effectivePort = tryGetPublicPort() ?: publicPort
-
-                    // 步驟二：取得當前任務 ID
-                    val taskId = getActiveTask(effectivePort)
+                    // 步驟一：取得當前任務 ID
+                    val taskId = getActiveTask()
                     if (taskId == null) {
                         listener?.onError("沒有進行中的翻譯任務")
                         listener?.onConnectionStateChanged(ConnectionState.RECONNECTING)
@@ -71,9 +68,9 @@ class SseClient(
                         continue
                     }
 
-                    // 步驟三：建立 SSE 連線
+                    // 步驟二：建立 SSE 連線
                     retryDelay = 1000L
-                    connectToStream(effectivePort, taskId)
+                    connectToStream(taskId)
 
                     // 連線結束後嘗試重連
                     if (isRunning) {
@@ -101,35 +98,11 @@ class SseClient(
         job = null
     }
 
-    /** 嘗試從主伺服器取得公開端口 */
-    private fun tryGetPublicPort(): Int? {
-        return try {
-            val request = Request.Builder()
-                .url("http://$serverHost:$mainPort/api/server/info")
-                .get()
-                .build()
-
-            client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) {
-                    val json = JSONObject(response.body?.string() ?: "")
-                    val enabled = json.optBoolean("enable_subtitle_sharing", false)
-                    if (enabled) {
-                        json.optInt("public_port", publicPort)
-                    } else {
-                        listener?.onError("字幕分享功能未啟用")
-                        null
-                    }
-                } else null
-            }
-        } catch (_: Exception) {
-            null // 主伺服器不可用，使用使用者設定的端口
-        }
-    }
 
     /** 取得當前活躍的翻譯任務 ID */
-    private fun getActiveTask(port: Int): String? {
+    private fun getActiveTask(): String? {
         val request = Request.Builder()
-            .url("http://$serverHost:$port/api/translation/active-task")
+            .url("$baseUrl/api/translation/active-task")
             .get()
             .build()
 
@@ -146,9 +119,9 @@ class SseClient(
     }
 
     /** 連線至 SSE 串流端點並持續讀取事件 */
-    private suspend fun connectToStream(port: Int, taskId: String) {
+    private suspend fun connectToStream(taskId: String) {
         val request = Request.Builder()
-            .url("http://$serverHost:$port/api/translation/stream/$taskId")
+            .url("$baseUrl/api/translation/stream/$taskId")
             .header("Accept", "text/event-stream")
             .header("Cache-Control", "no-cache")
             .get()

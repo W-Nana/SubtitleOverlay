@@ -39,9 +39,7 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
         const val NOTIFICATION_ID = 1001
         const val ACTION_STOP = "com.translator.subtitleoverlay.ACTION_STOP"
 
-        const val EXTRA_SERVER_HOST = "server_host"
-        const val EXTRA_MAIN_PORT = "main_port"
-        const val EXTRA_PUBLIC_PORT = "public_port"
+        const val EXTRA_SERVER_URL = "server_url"
 
         /** 靜態參照，供 MainActivity 存取 */
         var instance: OverlayService? = null
@@ -83,12 +81,10 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
         }
 
         // 從 Intent 取得連線參數
-        val host = intent?.getStringExtra(EXTRA_SERVER_HOST) ?: settingsManager.serverHost
-        val mainPort = intent?.getIntExtra(EXTRA_MAIN_PORT, settingsManager.mainPort) ?: settingsManager.mainPort
-        val publicPort = intent?.getIntExtra(EXTRA_PUBLIC_PORT, settingsManager.publicPort) ?: settingsManager.publicPort
+        val serverUrl = intent?.getStringExtra(EXTRA_SERVER_URL) ?: settingsManager.serverUrl
 
         // 啟動 SSE 連線
-        startSseConnection(host, mainPort, publicPort)
+        startSseConnection(serverUrl)
 
         return START_STICKY
     }
@@ -284,9 +280,9 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
 
     // === SSE 連線 ===
 
-    private fun startSseConnection(host: String, mainPort: Int, publicPort: Int) {
+    private fun startSseConnection(serverUrl: String) {
         sseClient?.stop()
-        sseClient = SseClient(host, mainPort, publicPort).apply {
+        sseClient = SseClient(serverUrl).apply {
             setEventListener(this@OverlayService)
             start(lifecycleScope)
         }

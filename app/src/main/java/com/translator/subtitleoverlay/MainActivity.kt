@@ -30,9 +30,7 @@ class MainActivity : AppCompatActivity() {
     private var isServiceRunning = false
 
     // UI 元件
-    private lateinit var editServerHost: EditText
-    private lateinit var editMainPort: EditText
-    private lateinit var editPublicPort: EditText
+    private lateinit var editServerUrl: EditText
     private lateinit var statusIndicator: View
     private lateinit var textStatus: TextView
     private lateinit var colorOriginal: View
@@ -77,9 +75,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun bindViews() {
-        editServerHost = findViewById(R.id.edit_server_host)
-        editMainPort = findViewById(R.id.edit_main_port)
-        editPublicPort = findViewById(R.id.edit_public_port)
+        editServerUrl = findViewById(R.id.edit_server_url)
         statusIndicator = findViewById(R.id.status_indicator)
         textStatus = findViewById(R.id.text_status)
         colorOriginal = findViewById(R.id.color_original)
@@ -99,9 +95,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadSettings() {
-        editServerHost.setText(settings.serverHost)
-        editMainPort.setText(settings.mainPort.toString())
-        editPublicPort.setText(settings.publicPort.toString())
+        editServerUrl.setText(settings.serverUrl)
 
         setColorViewBackground(colorOriginal, settings.originalTextColor)
         setColorViewBackground(colorTranslated, settings.translatedTextColor)
@@ -313,9 +307,13 @@ class MainActivity : AppCompatActivity() {
     // === 服務控制 ===
 
     private fun saveConnectionSettings() {
-        settings.serverHost = editServerHost.text.toString().trim()
-        settings.mainPort = editMainPort.text.toString().toIntOrNull() ?: 5000
-        settings.publicPort = editPublicPort.text.toString().toIntOrNull() ?: 8765
+        val url = editServerUrl.text.toString().trim()
+        // 若使用者沒有輸入協定，自動補上 http://
+        settings.serverUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+            url
+        } else {
+            "http://$url"
+        }
     }
 
     private fun checkPermissionAndStart() {
@@ -358,9 +356,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun startOverlayService() {
         val intent = Intent(this, OverlayService::class.java).apply {
-            putExtra(OverlayService.EXTRA_SERVER_HOST, settings.serverHost)
-            putExtra(OverlayService.EXTRA_MAIN_PORT, settings.mainPort)
-            putExtra(OverlayService.EXTRA_PUBLIC_PORT, settings.publicPort)
+            putExtra(OverlayService.EXTRA_SERVER_URL, settings.serverUrl)
         }
         startForegroundService(intent)
         isServiceRunning = true

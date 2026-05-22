@@ -14,17 +14,10 @@ class SettingsManager(context: Context) {
 
     // === 連線設定 ===
 
-    var serverHost: String
-        get() = prefs.getString("server_host", "192.168.1.100") ?: "192.168.1.100"
-        set(value) = prefs.edit().putString("server_host", value).apply()
-
-    var mainPort: Int
-        get() = prefs.getInt("main_port", 5000)
-        set(value) = prefs.edit().putInt("main_port", value).apply()
-
-    var publicPort: Int
-        get() = prefs.getInt("public_port", 8765)
-        set(value) = prefs.edit().putInt("public_port", value).apply()
+    /** 伺服器完整 URL（例如 http://192.168.1.100:8765） */
+    var serverUrl: String
+        get() = prefs.getString("server_url", "http://192.168.1.100:8765") ?: "http://192.168.1.100:8765"
+        set(value) = prefs.edit().putString("server_url", value).apply()
 
     // === 外觀設定 ===
 
