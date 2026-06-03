@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -138,6 +139,7 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
         rootView.setBackgroundColor(settingsManager.getBackgroundColorWithAlpha())
 
         // 初始時顯示等待提示
+        waitingText.typeface = subtitleTypeface(Typeface.NORMAL)
         waitingText.visibility = View.VISIBLE
         subtitleContainer.visibility = View.GONE
 
@@ -389,7 +391,14 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
     private fun rebuildSubtitleViews() {
         subtitleContainer.removeAllViews()
 
+        val maxCount = settingsManager.maxSubtitleCount
+        while (subtitleEntries.size > maxCount) {
+            subtitleEntries.removeAt(0)
+        }
+
         val fontSize = settingsManager.fontSize
+        val normalTypeface = subtitleTypeface(Typeface.NORMAL)
+        val boldTypeface = subtitleTypeface(Typeface.BOLD)
         val originalColor = settingsManager.originalTextColor
         val translatedColor = settingsManager.translatedTextColor
 
@@ -406,6 +415,7 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
                     text = entry.original
                     setTextColor(originalColor)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+                    typeface = normalTypeface
                     setShadowLayer(2f, 1f, 1f, Color.BLACK)
                 }
                 entryLayout.addView(originalView)
@@ -417,6 +427,7 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
                     text = entry.translated
                     setTextColor(translatedColor)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+                    typeface = boldTypeface
                     setShadowLayer(2f, 1f, 1f, Color.BLACK)
                 }
                 entryLayout.addView(translatedView)
@@ -439,6 +450,8 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
         // 更新背景色
         overlayView.findViewById<android.widget.FrameLayout>(R.id.overlay_root)
             ?.setBackgroundColor(settingsManager.getBackgroundColorWithAlpha())
+        waitingText.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+        waitingText.typeface = normalTypeface
 
         // 自動滾到底部（最新字幕在最下方）
         subtitleScroll.post {
@@ -449,6 +462,10 @@ class OverlayService : LifecycleService(), SseClient.EventListener {
     /** 動態更新外觀設定（由 MainActivity 呼叫） */
     fun refreshAppearance() {
         handler.post { rebuildSubtitleViews() }
+    }
+
+    private fun subtitleTypeface(style: Int): Typeface {
+        return Typeface.create(settingsManager.fontFamily, style)
     }
 
     // === 通知管理 ===

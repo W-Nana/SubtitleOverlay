@@ -3,6 +3,7 @@ package com.translator.subtitleoverlay
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -11,10 +12,13 @@ import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.EditText
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +29,18 @@ import com.google.android.material.slider.Slider
  * 主畫面 — 連線設定、字幕外觀設定、預覽、啟動/停止控制
  */
 class MainActivity : AppCompatActivity() {
+
+    private data class FontFamilyOption(val label: String, val family: String)
+
+    private val fontFamilyOptions = listOf(
+        FontFamilyOption("系統預設 Sans", "sans-serif"),
+        FontFamilyOption("Serif", "serif"),
+        FontFamilyOption("Monospace", "monospace"),
+        FontFamilyOption("Sans Medium", "sans-serif-medium"),
+        FontFamilyOption("Sans Condensed", "sans-serif-condensed"),
+        FontFamilyOption("Casual", "casual"),
+        FontFamilyOption("Cursive", "cursive")
+    )
 
     private lateinit var settings: SettingsManager
     private var isServiceRunning = false
@@ -40,6 +56,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textOpacity: TextView
     private lateinit var sliderFontSize: Slider
     private lateinit var textFontSize: TextView
+    private lateinit var spinnerFontFamily: Spinner
     private lateinit var sliderSubtitleCount: Slider
     private lateinit var textSubtitleCount: TextView
     private lateinit var previewContainer: LinearLayout
@@ -85,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         textOpacity = findViewById(R.id.text_opacity)
         sliderFontSize = findViewById(R.id.slider_font_size)
         textFontSize = findViewById(R.id.text_font_size)
+        spinnerFontFamily = findViewById(R.id.spinner_font_family)
         sliderSubtitleCount = findViewById(R.id.slider_subtitle_count)
         textSubtitleCount = findViewById(R.id.text_subtitle_count)
         previewContainer = findViewById(R.id.preview_container)
@@ -107,6 +125,8 @@ class MainActivity : AppCompatActivity() {
         sliderFontSize.value = settings.fontSize
         textFontSize.text = "${settings.fontSize.toInt()}sp"
 
+        setupFontFamilySpinner()
+
         sliderSubtitleCount.value = settings.maxSubtitleCount.toFloat()
         textSubtitleCount.text = "${settings.maxSubtitleCount} 組"
     }
@@ -117,7 +137,7 @@ class MainActivity : AppCompatActivity() {
             showColorPicker(settings.originalTextColor) { color ->
                 settings.originalTextColor = color
                 setColorViewBackground(colorOriginal, color)
-                updatePreview()
+                refreshAppearance()
             }
         }
 
@@ -125,7 +145,7 @@ class MainActivity : AppCompatActivity() {
             showColorPicker(settings.translatedTextColor) { color ->
                 settings.translatedTextColor = color
                 setColorViewBackground(colorTranslated, color)
-                updatePreview()
+                refreshAppearance()
             }
         }
 
@@ -133,7 +153,7 @@ class MainActivity : AppCompatActivity() {
             showColorPicker(settings.backgroundColor) { color ->
                 settings.backgroundColor = color
                 setColorViewBackground(colorBackground, color)
-                updatePreview()
+                refreshAppearance()
             }
         }
 
@@ -141,21 +161,37 @@ class MainActivity : AppCompatActivity() {
         sliderOpacity.addOnChangeListener { _, value, _ ->
             settings.backgroundOpacity = value.toInt()
             textOpacity.text = "${value.toInt()}%"
-            updatePreview()
+            refreshAppearance()
         }
 
         // 字體大小滑桿
         sliderFontSize.addOnChangeListener { _, value, _ ->
             settings.fontSize = value
             textFontSize.text = "${value.toInt()}sp"
-            updatePreview()
+            refreshAppearance()
+        }
+
+        // 字體選擇
+        spinnerFontFamily.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long
+            ) {
+                settings.fontFamily = fontFamilyOptions.getOrNull(position)?.family
+                    ?: SettingsManager.DEFAULT_FONT_FAMILY
+                refreshAppearance()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
 
         // 字幕行數滑桿
         sliderSubtitleCount.addOnChangeListener { _, value, _ ->
             settings.maxSubtitleCount = value.toInt()
             textSubtitleCount.text = "${value.toInt()} 組"
-            updatePreview()
+            refreshAppearance()
         }
 
         // 啟動/停止按鈕
@@ -173,6 +209,23 @@ class MainActivity : AppCompatActivity() {
             logBuffer.clear()
             logTextView.text = ""
         }
+    }
+
+    private fun setupFontFamilySpinner() {
+        val adapter = ArrayAdapter(
+            this,
+            R.layout.item_font_spinner,
+            fontFamilyOptions.map { it.label }
+        )
+        adapter.setDropDownViewResource(R.layout.item_font_spinner_dropdown)
+        spinnerFontFamily.adapter = adapter
+
+        val selectedFamily = SettingsManager.normalizeFontFamily(settings.fontFamily)
+        val selectedIndex = fontFamilyOptions.indexOfFirst { it.family == selectedFamily }
+            .takeIf { it >= 0 }
+            ?: fontFamilyOptions.indexOfFirst { it.family == SettingsManager.DEFAULT_FONT_FAMILY }
+                .coerceAtLeast(0)
+        spinnerFontFamily.setSelection(selectedIndex, false)
     }
 
     // === 顏色選擇器 ===
@@ -277,6 +330,7 @@ class MainActivity : AppCompatActivity() {
                 text = entry.original
                 setTextColor(settings.originalTextColor)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, settings.fontSize)
+                typeface = subtitleTypeface(Typeface.NORMAL)
                 setShadowLayer(2f, 1f, 1f, Color.BLACK)
             }
             entryLayout.addView(originalView)
@@ -285,6 +339,7 @@ class MainActivity : AppCompatActivity() {
                 text = entry.translated
                 setTextColor(settings.translatedTextColor)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, settings.fontSize)
+                typeface = subtitleTypeface(Typeface.BOLD)
                 setShadowLayer(2f, 1f, 1f, Color.BLACK)
             }
             entryLayout.addView(translatedView)
@@ -302,6 +357,15 @@ class MainActivity : AppCompatActivity() {
                 previewContainer.addView(divider)
             }
         }
+    }
+
+    private fun refreshAppearance() {
+        updatePreview()
+        OverlayService.instance?.refreshAppearance()
+    }
+
+    private fun subtitleTypeface(style: Int): Typeface {
+        return Typeface.create(settings.fontFamily, style)
     }
 
     // === 服務控制 ===

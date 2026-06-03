@@ -28,3 +28,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Desktop / Tauri
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/gen/
+desktop/src-tauri/target/

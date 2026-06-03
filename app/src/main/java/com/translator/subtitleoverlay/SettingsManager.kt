@@ -9,6 +9,15 @@ import android.graphics.Color
  */
 class SettingsManager(context: Context) {
 
+    companion object {
+        const val DEFAULT_FONT_FAMILY = "sans-serif"
+
+        fun normalizeFontFamily(value: String?): String {
+            val normalized = value.orEmpty().trim().replace(Regex("\\s+"), " ")
+            return normalized.ifEmpty { DEFAULT_FONT_FAMILY }.take(120)
+        }
+    }
+
     private val prefs: SharedPreferences =
         context.getSharedPreferences("subtitle_overlay_settings", Context.MODE_PRIVATE)
 
@@ -45,6 +54,11 @@ class SettingsManager(context: Context) {
     var fontSize: Float
         get() = prefs.getFloat("font_size", 16f)
         set(value) = prefs.edit().putFloat("font_size", value).apply()
+
+    /** 字體族（Android 內建 family name，預設：sans-serif） */
+    var fontFamily: String
+        get() = normalizeFontFamily(prefs.getString("font_family", DEFAULT_FONT_FAMILY))
+        set(value) = prefs.edit().putString("font_family", normalizeFontFamily(value)).apply()
 
     /** 最大字幕行數（預設：3） */
     var maxSubtitleCount: Int
